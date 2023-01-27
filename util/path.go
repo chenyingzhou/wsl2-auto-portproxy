@@ -1,6 +1,7 @@
 package util
 
 import (
+	"io/ioutil"
 	"os"
 )
 
@@ -15,13 +16,13 @@ func PathExists(path string) (bool, error) {
 	return false, err
 }
 
-func CreatePathIfNotExist(path string) (bool, error) {
-	pathExist, err := PathExists(path)
+func CreateFileIfNotExist(filename string, content string) (bool, error) {
+	pathExist, err := PathExists(filename)
 	if err != nil {
 		return false, err
 	}
 	if !pathExist {
-		err := os.MkdirAll(path, os.ModePerm)
+		err := ioutil.WriteFile(filename, []byte(content), 0644)
 		if err != nil {
 			return false, err
 		}

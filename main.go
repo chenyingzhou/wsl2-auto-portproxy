@@ -1,28 +1,15 @@
 package main
 
 import (
-	"flag"
-	"fmt"
-	"github.com/HobaiRiku/wsl2-auto-portproxy/lib/config"
-	"github.com/HobaiRiku/wsl2-auto-portproxy/lib/proxy"
-	"github.com/HobaiRiku/wsl2-auto-portproxy/lib/service"
-	"github.com/HobaiRiku/wsl2-auto-portproxy/lib/storage"
+	"github.com/chenyingzhou/wsl2-tcpproxy/config"
+	"github.com/chenyingzhou/wsl2-tcpproxy/proxy"
+	"github.com/chenyingzhou/wsl2-tcpproxy/service"
+	"github.com/chenyingzhou/wsl2-tcpproxy/storage"
 	"log"
-	"os"
 	"time"
 )
 
-var version string
-
 func main() {
-	// print version
-	var showVersion bool
-	flag.BoolVar(&showVersion, "v", false, "show version")
-	flag.Parse()
-	if showVersion {
-		fmt.Println(version)
-		os.Exit(1)
-	}
 	// get config interval
 	go func() {
 		for {
@@ -30,113 +17,72 @@ func main() {
 			if err != nil {
 				log.Printf("error getting config file: %s", err)
 			} else {
-				storage.C = c
+				storage.Conf = c
 			}
-			time.Sleep(time.Second)
+			time.Sleep(time.Second * 5)
 		}
 	}()
 	for {
 		// get linux's ip
 		storage.WslIp, _ = service.GetWslIP()
-		// get all tcp ports in linux now
-		linuxPorts, err := service.GetLinuxHostPorts()
-		if err != nil {
-			log.Fatal(err)
-		}
-		// change proxy port by config "predefined"
-		for i, p := range linuxPorts {
-			for _, predefinedTcpPort := range storage.C.Predefined.Tcp {
-				if p.Port == predefinedTcpPort.Remote {
-					linuxPorts[i].ProxyPort = predefinedTcpPort.Local
+		// get all tcp ports in linux
+		storage.WslPorts = service.GetWslPorts()
+		// get all tcp ports in windows
+		storage.WinPorts = service.GetWinPorts()
+		// ignore ports
+		for _, ignore := range storage.Conf.Ignore {
+			for i, port := range storage.WslPorts {
+				if port == uint16(ignore) {
+					storage.WslPorts = append(storage.WslPorts[:i], storage.WslPorts[i+1:]...)
 				}
 			}
 		}
-		// filter by config "ignore"
-		for i := 0; i < len(linuxPorts); {
-			needToDelete := false
-			for _, ignorePort := range storage.C.Ignore.Tcp {
-				if ignorePort == linuxPorts[i].Port {
-					needToDelete = true
+		// merge wsl oldProxy and custom oldProxy
+		newProxyPool := make(map[uint16]*proxy.Proxy)
+		for _, remotePort := range storage.WslPorts {
+			localPort := remotePort
+			for _, item := range storage.Conf.Predefined {
+				if remotePort == item.RemotePort {
+					localPort = item.LocalPort
+					break
 				}
 			}
-			if needToDelete {
-				linuxPorts = append(linuxPorts[:i], linuxPorts[i+1:]...)
+			newProxyPool[localPort] = &proxy.Proxy{
+				LocalPort:  localPort,
+				RemotePort: remotePort,
+				RemoteIp:   storage.WslIp,
+			}
+		}
+		for _, item := range storage.Conf.Custom {
+			newProxyPool[item.LocalPort] = &proxy.Proxy{
+				LocalPort:  item.LocalPort,
+				RemotePort: item.RemotePort,
+				RemoteIp:   item.RemoteIp,
+			}
+		}
+		// migrate oldProxy and stop outdated oldProxy
+		for localPort, oldProxy := range storage.ProxyPool {
+			newProxy, ok := newProxyPool[localPort]
+			if ok && newProxy.RemotePort == oldProxy.RemotePort && newProxy.RemoteIp == oldProxy.RemoteIp {
+				newProxyPool[localPort] = oldProxy
 			} else {
-				i++
+				_ = oldProxy.Stop()
 			}
 		}
-		// filter by config "OnlyPredefined"
-		if storage.C.OnlyPredefined {
-			for i := 0; i < len(linuxPorts); {
-				needToDelete := true
-				for _, predefinedTcpPort := range storage.C.Predefined.Tcp {
-					if predefinedTcpPort.Remote == linuxPorts[i].Port {
-						needToDelete = false
-					}
-				}
-				if needToDelete {
-					linuxPorts = append(linuxPorts[:i], linuxPorts[i+1:]...)
-				} else {
-					i++
-				}
-			}
-		}
-		// get all tcp ports in local windows now
-		windowsPorts, err := service.GetWindowsHostPorts()
-		if err != nil {
-			log.Println(err)
-		}
-		// calculate which port need to proxy
-		needPorts := service.GetNeededProxyPorts(linuxPorts, windowsPorts)
-		// create proxy
-		for _, port := range needPorts {
+		// start new proxy
+		for _, newProxy := range newProxyPool {
 			omitted := false
-			for i, p := range storage.ProxyPool {
-				if p.Port == port.Port {
+			for _, winPort := range storage.WinPorts {
+				if winPort == newProxy.LocalPort {
 					omitted = true
-					// update WslIp and restart proxy (if changed)
-					if p.WslIp != storage.WslIp {
-						storage.ProxyPool[i].WslIp = storage.WslIp
-						_ = p.Stop()
-					}
-					if !p.IsRunning {
-						err := p.Start()
-						if err != nil {
-							log.Printf("start proxy error,%s\n", err)
-						}
-					}
 					break
 				}
 			}
 			if !omitted {
-				newProxy := proxy.Proxy{Port: port.Port, ProxyPort: port.ProxyPort, Type: port.Type, WslIp: storage.WslIp}
-				err := newProxy.Start()
-				if err != nil {
-					log.Printf("start proxy error,%s\n", err)
-				}
-				storage.ProxyPool = append(storage.ProxyPool, newProxy)
+				_ = newProxy.Start()
 			}
 		}
-		// check for delete update
-		for i := 0; i < len(storage.ProxyPool); {
-			needToDelete := true
-			for _, port := range linuxPorts {
-				if port.Port == storage.ProxyPool[i].Port &&
-					port.ProxyPort == storage.ProxyPool[i].ProxyPort {
-					needToDelete = false
-					break
-				}
-			}
-			if needToDelete {
-				_ = storage.ProxyPool[i].Stop()
-			}
-			// delete
-			if !storage.ProxyPool[i].IsRunning {
-				storage.ProxyPool = append(storage.ProxyPool[:i], storage.ProxyPool[i+1:]...)
-			} else {
-				i++
-			}
-		}
+		storage.ProxyPool = newProxyPool
 		time.Sleep(time.Second * 1)
 	}
 }

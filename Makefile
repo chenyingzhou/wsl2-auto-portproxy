@@ -1,36 +1,19 @@
-.PHONY:build clean test dev
+.PHONY:build clean dev
 # Go parameters
-GOCMD=go
-GORUN=$(GOCMD) run
-GOBUILD=$(GOCMD) build
-GOCLEAN=$(GOCMD) clean
-GOTEST=$(GOCMD) test
-GOGET=$(GOCMD) get
+GO=go
 
 # name
-BINARY_NAME=wslpp
-
-# git version
-VERSION := $(shell git describe --always --tags  |sed -e "s/^v//")
-
-# LDFLAGS
-LDFLAGS = -ldflags "-s -w -X main.version=$(VERSION)"
-
+BINARY_NAME=wsl2-tcpproxy
 
 build: mod-tidy
-	CGO_ENABLED=0 GOOS=windows GOARCH=amd64 $(GOBUILD) \
-	 $(LDFLAGS)  -o ./dist/$(BINARY_NAME).exe
-
-test:
-	$(GOTEST) -v ./...
+	CGO_ENABLED=0 GOOS=windows GOARCH=amd64 $(GO) build -o ./$(BINARY_NAME).exe
 
 clean:
-	$(GOCLEAN)
-	@rm -f ./dist/$(BINARY_NAME)_*
+	$(GO) clean
+	@rm -f ./$(BINARY_NAME).exe
 
 mod-tidy:
-	$(GOCMD) mod tidy
+	$(GO) mod tidy
 
 dev:
-	$(GORUN) ./main.go
-
+	$(GO) run ./main.go

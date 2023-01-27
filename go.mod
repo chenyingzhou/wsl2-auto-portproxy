@@ -1,5 +1,3 @@
-module github.com/HobaiRiku/wsl2-auto-portproxy
+module github.com/chenyingzhou/wsl2-tcpproxy
 
 go 1.14
-
-require github.com/pkg/errors v0.9.1

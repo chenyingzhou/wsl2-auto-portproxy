@@ -9,31 +9,32 @@ import (
 )
 
 type Proxy struct {
-	Type      string
-	Port      int64
-	ProxyPort int64
-	Listener  *net.TCPListener
-	IsRunning bool
-	WslIp     string
+	LocalPort  uint16
+	RemotePort uint16
+	RemoteIp   string
+	Listener   *net.TCPListener
+	IsRunning  bool
 }
 
 func (p *Proxy) Start() error {
-	localAddr, err := net.ResolveTCPAddr("tcp", fmt.Sprintf(":%d", p.ProxyPort))
+	if p.IsRunning {
+		return nil
+	}
+	localAddr, err := net.ResolveTCPAddr("tcp", fmt.Sprintf(":%d", p.LocalPort))
 	if err != nil {
-		log.Printf("resove local Addr error,%s\n", err)
+		log.Printf("resove local port error, port: %d, err: %v\n", p.LocalPort, err)
 		return err
 	}
 	p.Listener, err = net.ListenTCP("tcp", localAddr)
 	if err != nil {
-		log.Printf("Could not start proxy server on %d: %v\n", p.Port, err)
+		log.Printf("could not start proxy server on %d: %v\n", p.LocalPort, err)
 		return err
 	}
-	log.Printf("new proxy start in port:%d->%d", p.ProxyPort, p.Port)
+	log.Printf("proxy start: %d -> %s:%d", p.LocalPort, p.RemoteIp, p.RemotePort)
 	go func() {
 		for {
 			conn, err := p.Listener.AcceptTCP()
 			if err != nil {
-				log.Println("Could not accept client connection:", err)
 				break
 			}
 			go p.handleTCPConn(conn, 5000)
@@ -44,17 +45,20 @@ func (p *Proxy) Start() error {
 }
 
 func (p *Proxy) Stop() error {
+	if !p.IsRunning {
+		return nil
+	}
 	p.IsRunning = false
-	log.Printf("proxy stop, port:%d->%d", p.ProxyPort, p.Port)
+	log.Printf("proxy stop:  %d -> %s:%d", p.LocalPort, p.RemoteIp, p.RemotePort)
 	return p.Listener.Close()
 }
 
 func (p *Proxy) handleTCPConn(conn *net.TCPConn, timeout int64) {
-	log.Printf("Client '%v' connected!\n", conn.RemoteAddr())
+	log.Printf("client '%v' connected!\n", conn.RemoteAddr())
 
 	_ = conn.SetKeepAlive(true)
 	_ = conn.SetKeepAlivePeriod(time.Second * 15)
-	targetAddr, err := net.ResolveTCPAddr("tcp", fmt.Sprintf("%s:%d", p.WslIp, p.Port))
+	targetAddr, err := net.ResolveTCPAddr("tcp", fmt.Sprintf("%s:%d", p.RemoteIp, p.RemotePort))
 	if err != nil {
 		log.Printf("resove remote Addr error,%s\n", err)
 	}
@@ -64,8 +68,10 @@ func (p *Proxy) handleTCPConn(conn *net.TCPConn, timeout int64) {
 		log.Println("Could not connect to remote server:", err)
 		return
 	}
-	defer client.Close()
-	defer conn.Close()
+	defer func() {
+		_ = client.Close()
+		_ = conn.Close()
+	}()
 	log.Printf("Connection to server '%v' established!\n", client.RemoteAddr())
 
 	_ = client.SetKeepAlive(true)

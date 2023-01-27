@@ -1,60 +1,42 @@
-# wsl2-auto-portProxy
-wsl2-auto-portProxy(wslpp) is a simple tool for proxying port of linux running in wsl2 (which now use a hyper-v nat network), it automatically scans the port in wls and setup a port proxy in windows host.    
+# wsl2-tcpproxy
+用于将Windows的TCP端口转发至wsl2，另外，也支持通过配置转发至wsl2以外的端口
 
-**Note: only port listening at [::] or 0.0.0.0 works, and will only works to  your default  wsl distribution**
-
-## Feature
-- [x] TCP port support
-- [x] custom port proxy config, support live edit
-- [ ] web interface
-- [ ] UDP port support
-
-
-## Requirement
-your wsl linux must install the `net-tools` by 
+## 转发至WSL2
+wsl2需要安装`net-tools`，Ubuntu可通过以下命令安装
 ```bash
 sudo apt-get install net-tools
 ```
-## Build and install
-you can download the bin file(wslpp.exe) in [release](https://github.com/HobaiRiku/wsl2-auto-portproxy/releases).
-#### or build wslpp.exe from source
+
+## 如何安装
+you can download the bin file(wslpp.exe) in [release](https://github.com/chenyingzhou/wsl2-auto-portproxy/releases).
+#### 或从源码构建
 ```bash
 make build
 ```
-the bin file will be store in dist/wslpp.exe    
-
-#### or install with `go get`
+#### 如果环境为Windows，用以下命令替代`make build`
 ```bash
-go get https://github.com/HobaiRiku/wsl2-auto-portproxy
+go build -o ./wsl2-tcpproxy.exe
 ```
-and use `wsl2-auto-portproxy.exe` to start proxy
 
-## How it works
-wslpp start an interval to get IP address of the nat interface and scan all ports listening at all network in the subsystem, then use golang's `net` to start proxy direct to ports.
-
-## Configuration
-Support custom configuration by a json file, which must be placed in `%HOMEPATH%/.wslpp/config.json`, the `.wslpp` dir will be created automatically by wslpp when it runs, but the json file should be created by yourself.    
-Example:
+## 配置文件
+文件位于`$HOME/.wsl2-tcpproxy.json`，首次运行时会自动创建   
+示例：
 ```json
 {
-  "onlyPredefined": true,
-  "predefined": {
-    "tcp": [
-      "666:22"
-    ]
-  },
-  "ignore": {
-    "tcp": [
-      445
-    ]
-  }
+  "predefined": [
+    "6380:6379"
+  ],
+  "ignore": [
+    "443"
+  ],
+  "custom": [
+    "8081:192.168.1.99:8080"
+  ]
 }
 ```
-* onlyPredefined: If `true`, will only start port defined in `predefined` field.
-* predefined: Define the custom port to proxy, "666:22" means `windows(666)->linux(22)`, if undefined, port in windows will follow the same of linux. Must be a string array in the sub field name `tcp`.
-* ignore: If defined, will ignore the port in linux. Must be a number array in the sub field name `tcp`. 
-
-**Note: If port is already use by another program in windows, the port will be omitted**
+- predefined: 预设的端口映射，格式为`winport:wslport`，该设置仅针对`winport和wslport不一致`的情况，端口相同的无需设置
+- ignore: 忽略的wsl2的端口，该端口不会被代理
+- custom: wsl2以外的代理，支持转发到任意机器的任意端口，格式为`winport:remoteip:remoteport`
 
 ## License
 MIT
