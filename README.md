@@ -8,7 +8,7 @@ sudo apt-get install net-tools
 ```
 
 ## 如何安装
-you can download the bin file(wslpp.exe) in [release](https://github.com/chenyingzhou/wsl2-auto-portproxy/releases).
+前往 [release](https://github.com/chenyingzhou/wsl2-tcpproxy/releases) 下载最新版本的`wsl2-tcpproxy.exe`
 #### 或从源码构建
 ```bash
 make build
