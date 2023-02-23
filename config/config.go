@@ -14,8 +14,7 @@ import (
 
 var configFileName = ".wsl2-tcpproxy.json"
 
-var configFileExample = `
-{
+var configFileExample = `{
   "predefined": [
     "6380:6379"
   ],
@@ -25,8 +24,7 @@ var configFileExample = `
   "custom": [
     "8081:192.168.1.99:8080"
   ]
-}
-`
+}`
 
 type Config struct {
 	Ignore     []PortIgnore
