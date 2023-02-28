@@ -54,8 +54,7 @@ func (p *Proxy) Stop() error {
 }
 
 func (p *Proxy) handleTCPConn(conn *net.TCPConn, timeout int64) {
-	log.Printf("client '%v' connected!\n", conn.RemoteAddr())
-
+	defer func() { _ = conn.Close() }()
 	_ = conn.SetKeepAlive(true)
 	_ = conn.SetKeepAlivePeriod(time.Second * 15)
 	targetAddr, err := net.ResolveTCPAddr("tcp", fmt.Sprintf("%s:%d", p.RemoteIp, p.RemotePort))
@@ -63,16 +62,13 @@ func (p *Proxy) handleTCPConn(conn *net.TCPConn, timeout int64) {
 		log.Printf("resove remote Addr error,%s\n", err)
 	}
 	c, err := net.DialTimeout("tcp", targetAddr.String(), time.Duration(timeout)*time.Second)
-	client, _ := c.(*net.TCPConn)
 	if err != nil {
 		log.Println("Could not connect to remote server:", err)
 		return
 	}
-	defer func() {
-		_ = client.Close()
-		_ = conn.Close()
-	}()
-	log.Printf("Connection to server '%v' established!\n", client.RemoteAddr())
+	client, _ := c.(*net.TCPConn)
+	defer func() { _ = client.Close() }()
+	log.Printf("client '%v' connected to server '%v'\n", conn.RemoteAddr(), client.RemoteAddr())
 
 	_ = client.SetKeepAlive(true)
 	_ = client.SetKeepAlivePeriod(time.Second * 15)
@@ -82,7 +78,7 @@ func (p *Proxy) handleTCPConn(conn *net.TCPConn, timeout int64) {
 	go func() {
 		_, err := io.Copy(client, conn)
 		if err != nil {
-			log.Println(err)
+			log.Printf("client '%v' disconnected from server '%v' by the server\n", conn.RemoteAddr(), client.RemoteAddr())
 		}
 		stop <- true
 	}()
@@ -90,7 +86,7 @@ func (p *Proxy) handleTCPConn(conn *net.TCPConn, timeout int64) {
 	go func() {
 		_, err := io.Copy(conn, client)
 		if err != nil {
-			log.Println(err)
+			log.Printf("client '%v' disconnected from server '%v' by the client\n", conn.RemoteAddr(), client.RemoteAddr())
 		}
 		stop <- true
 	}()
