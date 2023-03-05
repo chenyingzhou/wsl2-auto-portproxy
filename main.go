@@ -10,6 +10,7 @@ import (
 )
 
 func main() {
+	ready := make(chan bool)
 	// get config interval
 	go func() {
 		for {
@@ -19,10 +20,12 @@ func main() {
 			} else {
 				storage.Conf = c
 			}
+			ready <- true
 			time.Sleep(time.Second * 5)
 		}
 	}()
 	for {
+		<-ready
 		// get linux's ip
 		storage.WslIp, _ = service.GetWslIP()
 		// get all tcp ports in linux
@@ -83,6 +86,5 @@ func main() {
 			}
 		}
 		storage.ProxyPool = newProxyPool
-		time.Sleep(time.Second * 5)
 	}
 }
