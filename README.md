@@ -38,6 +38,18 @@ go build -o ./wsl2-tcpproxy.exe
 - ignore: 忽略的wsl2的端口，该端口不会被代理
 - custom: wsl2以外的代理，支持转发到任意机器的任意端口，格式为`winport:remoteip:remoteport`
 
+## 常见问题解答
+Q: 基本原理  
+A: 监听本机端口，根据配置代理至远程端口  
+Q: WSL2自动代理是如何实现的？  
+A: 在WSL发行版上执行`netstat -tunlp`获取当前打开的所有端口  
+Q: WSL2开启/关闭服务时，代理会同步开启/关闭吗？  
+A: 会。有定时检查功能，该功能会检查配置文件的更新和WSL2的服务状态变更  
+Q: 如果安装了多个WSL发行版，如何代理指定的版本   
+A: 不需要任何配置，多个发行版共享同一个IP地址，且在任意发行版执行`netstat -tunlp`都会得到所有发行版打开的端口，所以无需任何参数就能同时代理所有发行版  
+Q: 可以在MacOS/Linux上运行吗  
+A: 可以，但是仅支持自定义配置(配置文件的`custom`字段)
+
 ## License
 MIT
 
