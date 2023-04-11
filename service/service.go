@@ -60,7 +60,7 @@ func GetWinPorts() []uint16 {
 		return nil
 	}
 	cmd := exec.Command("cmd", "/c", "Netstat", "-ano", "|", "findstr", "LISTENING")
-	reg := regexp.MustCompile("(TCP)\\s+(\\[::\\]:|0.0.0.0:)(\\d{2,5})")
+	reg := regexp.MustCompile("(TCP)\\s+(\\[::]:|0.0.0.0:)(\\d{2,5})")
 	return getPorts(cmd, reg, 3)
 }
 
