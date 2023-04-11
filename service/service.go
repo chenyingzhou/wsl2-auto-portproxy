@@ -1,10 +1,10 @@
 package service
 
 import (
-	"errors"
 	"log"
 	"os/exec"
 	"regexp"
+	"runtime"
 	"strconv"
 	"strings"
 )
@@ -15,25 +15,36 @@ type Port struct {
 	ProxyPort int64
 }
 
-var wslValid = true
+var wslValid bool
 
-func GetWslIP() (string, error) {
+func init() {
+	if runtime.GOOS == "windows" {
+		cmd := exec.Command("wsl", "--exec", "pwd")
+		_, err := cmd.Output()
+		if err == nil {
+			wslValid = true
+		}
+	}
 	if !wslValid {
-		return "", errors.New("wsl is not available")
+		log.Printf("wsl is not available\n")
+	}
+}
+
+func GetWslIP() string {
+	if !wslValid {
+		return ""
 	}
 	cmd := exec.Command("wsl", "--", "bash", "-c", "ip -4 a show eth0 | grep -oP '(?<=inet\\s)\\d+(\\.\\d+){3}'")
 	output, err := cmd.Output()
 	if err != nil {
-		wslValid = false
-		log.Printf("wsl is not available\n")
-		return "", err
+		return ""
 	}
 	ip := strings.Replace(string(output), "\n", "", -1)
 	reg := regexp.MustCompile("^\\d{1,3}.\\d{1,3}.\\d{1,3}.\\d{1,3}$")
 	if !reg.MatchString(ip) {
-		return "", errors.New("invalid ip")
+		return ""
 	}
-	return ip, nil
+	return ip
 }
 func GetWslPorts() []uint16 {
 	if !wslValid {

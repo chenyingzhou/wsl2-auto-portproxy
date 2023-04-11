@@ -7,12 +7,14 @@ import (
 	"io/ioutil"
 	"log"
 	"os/user"
-	"path"
+	"runtime"
 	"strconv"
 	"strings"
 )
 
 var configFileName = ".wsl2-tcpproxy.json"
+
+var configFilePath string
 
 var configFileExample = `{
   "predefined": [
@@ -90,7 +92,11 @@ func (pi *PortIgnore) UnmarshalJSON(data []byte) error {
 
 func init() {
 	userHome, _ := user.Current()
-	configFilePath := path.Join(userHome.HomeDir, configFileName)
+	delimiter := "/"
+	if runtime.GOOS == "windows" {
+		delimiter = "\\"
+	}
+	configFilePath = userHome.HomeDir + delimiter + configFileName
 	_, err := util.CreateFileIfNotExist(configFilePath, configFileExample)
 	if err != nil {
 		log.Fatalf("config init error: %s", err)
@@ -100,8 +106,6 @@ func init() {
 
 func GetConfig() (Config, error) {
 	var out Config
-	userHome, _ := user.Current()
-	configFilePath := path.Join(userHome.HomeDir, configFileName)
 	exists, _ := util.PathExists(configFilePath)
 	if !exists {
 		return out, nil

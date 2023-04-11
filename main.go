@@ -27,7 +27,7 @@ func main() {
 	for {
 		<-ready
 		// get linux's ip
-		storage.WslIp, _ = service.GetWslIP()
+		storage.WslIp = service.GetWslIP()
 		// get all tcp ports in linux
 		storage.WslPorts = service.GetWslPorts()
 		// get all tcp ports in windows
