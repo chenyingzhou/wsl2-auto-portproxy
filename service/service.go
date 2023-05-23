@@ -65,12 +65,12 @@ func GetWinPorts() []uint16 {
 }
 
 func getPorts(cmd *exec.Cmd, reg *regexp.Regexp, position int) []uint16 {
-	var ports []uint16
 	output, err := cmd.Output()
 	if err != nil {
 		log.Printf("failed to exec cmd: %s\n", strings.Join(cmd.Args, " "))
-		return ports
+		return nil
 	}
+	var ports = make([]uint16, 0)
 	rets := reg.FindAllStringSubmatch(string(output), -1)
 	for _, ret := range rets {
 		duplicated := false

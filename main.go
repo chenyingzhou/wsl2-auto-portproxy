@@ -27,11 +27,20 @@ func main() {
 	for {
 		<-ready
 		// get linux's ip
-		storage.WslIp = service.GetWslIP()
+		wslIp := service.GetWslIP()
+		if wslIp != "" {
+			storage.WslIp = wslIp
+		}
 		// get all tcp ports in linux
-		storage.WslPorts = service.GetWslPorts()
+		wslPorts := service.GetWslPorts()
+		if wslPorts != nil {
+			storage.WslPorts = wslPorts
+		}
 		// get all tcp ports in windows
-		storage.WinPorts = service.GetWinPorts()
+		winPorts := service.GetWinPorts()
+		if winPorts != nil {
+			storage.WinPorts = winPorts
+		}
 		// ignore ports
 		for _, ignore := range storage.Conf.Ignore {
 			for i, port := range storage.WslPorts {
