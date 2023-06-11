@@ -67,7 +67,7 @@ func GetWinPorts() []uint16 {
 func getPorts(cmd *exec.Cmd, reg *regexp.Regexp, position int) []uint16 {
 	output, err := cmd.Output()
 	if err != nil {
-		log.Printf("failed to exec cmd: %s\n", strings.Join(cmd.Args, " "))
+		//log.Printf("failed to exec cmd: %s\n", strings.Join(cmd.Args, " "))
 		return nil
 	}
 	var ports = make([]uint16, 0)
