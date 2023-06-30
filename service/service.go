@@ -51,7 +51,7 @@ func GetWslPorts() []uint16 {
 		return nil
 	}
 	cmd := exec.Command("wsl", "--exec", "netstat", "-tunlp")
-	reg := regexp.MustCompile("(tcp)\\s+\\d+\\s+\\d+\\s+(:::|0.0.0.0:)(\\d{2,5})")
+	reg := regexp.MustCompile("(tcp6|tcp)\\s+\\d+\\s+\\d+\\s+(:::|0.0.0.0:)(\\d{2,5})")
 	return getPorts(cmd, reg, 3)
 }
 
