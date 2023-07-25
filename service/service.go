@@ -19,7 +19,7 @@ var wslValid bool
 
 func init() {
 	if runtime.GOOS == "windows" {
-		cmd := exec.Command("wsl", "--exec", "pwd")
+		cmd := exec.Command("wsl", "-l", "-v")
 		_, err := cmd.Output()
 		if err == nil {
 			wslValid = true
@@ -30,7 +30,30 @@ func init() {
 	}
 }
 
+func wslRunning() bool {
+	cmd := exec.Command("wsl", "-l", "-v")
+	output, err := cmd.Output()
+	if err != nil {
+		return false
+	}
+	for _, l := range strings.Split(string(output), "\n") {
+		match := strings.Contains(l, "*")
+		match = match && strings.Contains(l, "R")
+		match = match && strings.Contains(l, "u")
+		match = match && strings.Contains(l, "n")
+		match = match && strings.Contains(l, "i")
+		match = match && strings.Contains(l, "g")
+		if match {
+			return true
+		}
+	}
+	return false
+}
+
 func GetWslIP() string {
+	if !wslRunning() {
+		return ""
+	}
 	if !wslValid {
 		return ""
 	}
@@ -47,7 +70,7 @@ func GetWslIP() string {
 	return ip
 }
 func GetWslPorts() []uint16 {
-	if !wslValid {
+	if !wslValid || !wslRunning() {
 		return nil
 	}
 	cmd := exec.Command("wsl", "--exec", "netstat", "-tunlp")
